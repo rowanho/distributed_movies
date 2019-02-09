@@ -16,6 +16,7 @@ class Movie_Queries(object):
         movie_queries = Pyro4.Proxy("PYRONAME:replica.movie.queries")
         #list of tuples containing (movie_id,movie_name)
         possible_movies = movie_queries.get_movies(movie_name)
+        print(possible_movies[0][0])
         rating = movie_queries.get_overall_rating(possible_movies[0][0])
         return rating
 
