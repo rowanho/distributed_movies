@@ -18,7 +18,7 @@ class Movie_Queries(object):
         possible_movies = movie_queries.get_movies(movie_name)
         print(possible_movies[0][0])
         rating = movie_queries.get_overall_rating(possible_movies[0][0])
-        return rating
+        return possible_movies[0][1],rating
 
 #register all the classes here
 def main():

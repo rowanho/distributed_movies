@@ -46,8 +46,8 @@ def add_movie_rating(movie_updates):
     # actually call the remote functions here
 def ask_get_movie_rating(movie_queries):
     mn_input = input("Enter the name of the movie to obtain the rating for: ")
-    rating = movie_queries.get_overall_rating(mn_input)
-    print(rating)
+    movie_name ,rating = movie_queries.get_overall_rating(mn_input)
+    print('The average rating for movie %s is %f' % (movie_name,rating))
     # actually call the remote functions here
 def main():
     movie_updates = Pyro4.Proxy("PYRONAME:frontend.movie.updates")    # use name server object lookup uri shortcut

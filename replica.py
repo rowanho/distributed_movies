@@ -1,7 +1,11 @@
 import Pyro4
 import csv
+from uuid import uuid1
 MOVIE_DIR = 'ml-latest-small'
 #TODO - complete functions and classes!
+#raise this error when we can't find a movie
+class NullQueryException(Exception):
+    pass
 @Pyro4.expose
 class Movie_Updates(object):
     def register_user(self):
@@ -21,10 +25,24 @@ class Movie_Queries(object):
                     continue
                 if movie_string.lower() in row[1].lower():
                     movie_list.append((int(row[0]),row[1]))
-        return movie_list
+        if len(movie_list) == 0:
+            raise NullQueryException("No movies found")
+        else:
+            return movie_list
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,user_id,movie_id):
-        return 0
+        rating = -1.0
+        with open(MOVIE_DIR + '/ratings.csv') as rating_csv:
+            reader - csv.reader(rating_csv,delimiter=',',quotechar='|')
+            for i,row in enumerate(reader):
+                if i == 0:
+                    continue
+                if int(row[1]) == movie_id and int(row[0])== movie_id:
+                    rating = float(row[2])
+        if rating == -1.0:
+            raise NullQueryException('No ratings found')
+        else:
+            return rating
     #returns the rating of a movie by all users
     def get_overall_rating(self,movie_id):
         r_count,total_rating = 0,0
@@ -40,7 +58,7 @@ class Movie_Queries(object):
                     r_count += 1
                     total_rating += float(row[2])
         if r_count == 0:
-            return 0
+            raise NullQueryException('No ratings found')
         else:
             return total_rating/r_count
 
@@ -48,12 +66,13 @@ class Movie_Queries(object):
         return 0
 #register all the classes here
 def main():
+    id_string = str(uuid1())
     daemon = Pyro4.Daemon()                # make a Pyro daemon
     ns = Pyro4.locateNS()                  # find the name server
     uri = daemon.register(Movie_Updates)   # register the greeting maker as a Pyro object
-    ns.register("replica.movie.updates", uri)   # register the object with a name in the name server
+    ns.register(id_string + ".movie.updates", uri)   # register the object with a name in the name server
     uri2 = daemon.register(Movie_Queries)
-    ns.register("replica.movie.queries",uri2)
+    ns.register(id_string + ".movie.queries",uri2)
     print("Ready.")
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
