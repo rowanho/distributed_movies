@@ -1,5 +1,6 @@
 # saved as greeting-server.py
 import Pyro4
+import threading
 @Pyro4.expose
 class Movie_Updates(object):
     def register_user(self):
@@ -20,6 +21,26 @@ class Movie_Queries(object):
         rating = movie_queries.get_overall_rating(possible_movies[0][0])
         return possible_movies[0][1],rating
 
+#input - the Pyro4 ns object
+#iterates through servers on the name system and returns the uuid of the one that is free
+#if it can't find one, returns 0
+def get_free_server(ns):
+    for key in ns.list():
+        if 'replica.status' in key:
+            replica_status = Pyro4.Proxy("PYRONAME:" + key)
+            is_free = False
+            try:
+                status = replica_status.get_status()
+                print(status)
+                if status == 'free':
+                    is_free = True
+            except:
+                continue
+            if is_free:
+                return key.split('.')[0]
+    return 0
+
+
 #register all the classes here
 def main():
     daemon = Pyro4.Daemon()                # make a Pyro daemon
@@ -29,6 +50,11 @@ def main():
     uri2 = daemon.register(Movie_Queries)
     ns.register("frontend.movie.queries",uri2)
     print("Ready.")
+    def my_loop():
+        threading.Timer(3.0, my_loop).start()
+        print("First free server found: ",get_free_server(ns))
+    my_loop()
+
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 if __name__ == "__main__":
     main()

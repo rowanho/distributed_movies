@@ -1,11 +1,26 @@
 import Pyro4
 import csv
 from uuid import uuid1
+import threading
 MOVIE_DIR = 'ml-latest-small'
+#STATUS is either set to 'free','busy' or 'down'
+STATUS = 'free'
 #TODO - complete functions and classes!
 #raise this error when we can't find a movie
 class NullQueryException(Exception):
     pass
+#remote functions to get the status of the server
+@Pyro4.expose
+class Replica_Status(object):
+    #gets the status of the server
+    def get_status(self):
+        return STATUS
+#remote functions for sending and recieving gossip
+@Pyro4.expose
+class Gossip(object):
+    def recieve_gossip(self,gossip):
+        pass
+#remote functions for sending updates for movie ratings
 @Pyro4.expose
 class Movie_Updates(object):
     def register_user(self):
@@ -13,6 +28,8 @@ class Movie_Updates(object):
     #updates the movie rating based on a new rating
     def update_rating(self, user_id,movie_id,rating):
         return 0
+
+#remote functions for obtaining queries for movie ratings
 @Pyro4.expose
 class Movie_Queries(object):
     #returns a list of tuples containing movie_ids and full names based on movie name input
@@ -73,7 +90,9 @@ def main():
     ns.register(id_string + ".movie.updates", uri)   # register the object with a name in the name server
     uri2 = daemon.register(Movie_Queries)
     ns.register(id_string + ".movie.queries",uri2)
-    print("Ready.")
+    uri3 = daemon.register(Replica_Status)
+    ns.register(id_string + ".replica.status",uri3)
+    print("Server with id %s is ready." %(id_string))
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
 if __name__ == "__main__":
