@@ -6,14 +6,6 @@ class NoFreeServerException(Exception):
     pass
 @Pyro4.expose
 class FrontEnd(object):
-    def register_user(self):
-        #get a replica implementation of the function
-        replica_id = get_free_server()
-        if replica_id != 0:
-            replica = Pyro4.Proxy("PYRONAME:" + replica_id +".replica")
-            return replica.register_user()
-        else:
-            raise NoFreeServerException("Couldn't find a free server")
     def add_rating(self,movie_name,user_id):
         replica_id = get_free_server()
         if replica_id != 0:
