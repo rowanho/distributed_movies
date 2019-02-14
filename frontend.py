@@ -55,7 +55,6 @@ def get_free_server():
                 return key.split('.')[0]
     return 0
 
-
 #register all the classes here
 def main():
     daemon = Pyro4.Daemon()                # make a Pyro daemon
