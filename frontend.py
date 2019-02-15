@@ -1,29 +1,35 @@
 # saved as greeting-server.py
 import Pyro4
 import threading
-
+from lib.vector_clock import vector_clock
 class NoFreeServerException(Exception):
     pass
 @Pyro4.expose
 class FrontEnd(object):
-    def add_rating(self,movie_name,user_id):
+    def __init__(self):
+        #prev keeps track of the timestamp of the most recent data the client has accessed
+        self.prev_timestamp = vector_clock([])
+
+
+    def add_rating(self,user_id,movie_id):
         replica_id = get_free_server()
-        if replica_id != 0:
-            #get a replica implementation of the function
-            replica = Pyro4.Proxy("PYRONAME:replica")
-            return movie_updates.add_rating()
+        if replica_id != -1:
+            #get a replica
+            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
+            res = replica.add_rating(user_id,movie_id)
+            self.prev_timestamp.updateToMax(res["timestamp"])
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
-    def get_overall_rating(self,movie_name):
+
+    def get_user_rating(self,user_id,movie_id):
         replica_id = get_free_server()
-        if replica_id != 0:
-            replica = Pyro4.Proxy("PYRONAME:" + replica_id +".replica")
-            #list of tuples containing (movie_id,movie_name)
-            possible_movies = replica.get_movies(movie_name)
-            print(possible_movies[0][0])
-            rating = replica.get_overall_rating(possible_movies[0][0])
-            return possible_movies[0][1],rating
+        if replica_id != -1:
+            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
+            timestamp = self.prev_timestamp.vector
+            res = replica.get_user_rating(timestamp,user_id,movie_id)
+            self.prev_timestamp.updateToMax(res["timestamp"])
+            return res["rating"]
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
@@ -45,13 +51,13 @@ def get_free_server():
                 continue
             if is_free:
                 return key.split('.')[0]
-    return 0
+    return -1 # if no free server found
 
 #register all the classes here
 def main():
     daemon = Pyro4.Daemon()                # make a Pyro daemon
-    ns = Pyro4.locateNS()                  # find the name server
-    uri = daemon.register(FrontEnd)   # register the greeting maker as a Pyro object
+    ns = Pyro4.locateNS()
+    uri = daemon.register(FrontEnd)   # register the Pyro object
     ns.register("frontend", uri)   # register the object with a name in the name server
     print("Ready.")
     def my_loop():
