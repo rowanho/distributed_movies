@@ -1,8 +1,9 @@
 import Pyro4
-from uuid import uuid1
+from uuid import uuid4
 import threading
 import time
 import random
+import sys
 from lib.csv_functions import get_all_movies,get_all_ratings
 #simple vector clock object
 from lib.vector_clock import vector_clock
@@ -43,12 +44,21 @@ def send_gossip(limit,our_replica):
     replica.next_gossip_message = {}
 
 
+#takes in an update and timestamp table and returns True iff we can remove it
+def can_remove_update(update,timestamp_table):
+    for server,vector_timestamp in timestamp_table:
+        #if we don't know whether all the servers are caught up with the update, we can't remove it from the log
+        if not timestamp_table.is_geq(update["timestamp"]):
+            return False
+    return True
 ####remote functions to get the status of the server####
 @Pyro4.expose
 class Replica(object):
 
 
-    def __init__(self,server_ids,id):
+    def __init__(self,server_ids,id,number_of_servers):
+        self.id = id
+        self.number_of_servers = number_of_servers
         self.status = 'free'
         self.movies = get_all_movies()
         self.ratings = get_all_ratings()
@@ -56,9 +66,9 @@ class Replica(object):
         self.replica_timestamp = vector_clock(server_ids,id)
         #this timestamp is inced whenever we actually add a stable update to the data
         self.value_timestamp = vector_clock(server_ids,id)
-        self.update_log = []
+        self.update_log = {}
         self.executed_operations = []
-        self.timestamp_table = []
+        self.timestamp_table = {}
         #the updates recieved to send in the next gossip message
         next_gossip_message = {"timestamp":self.replica_timestamp,"gossip_data":[]}
 
@@ -71,27 +81,47 @@ class Replica(object):
 
     #recieves gossip messages from another server
     def gossip_recieve(self,gossip_msg):
-        pass
-
+        print("Received gossip from server id " + gossip_msg["id"])
+        #update the timestamp in the timestamp table
+        if gossip_msg["id"] not in self.timestamp_table:
+            self.timestamp_table["id"] = vector_clock([])
+        self.timestamp_table["id"].updateToMax(gossip_msg["timestamp"])
+        #add any updates we don't already have to the update log
+        for operation_id in gossip_msg["updates"]:
+            update = gossip_msg["updates"][operation_id]
+            #update may be stable in other replica but not yet stable in ours
+            update["stable"] = False
+            if operation_id not in self.update_log:
+                self.update_log[operation_id] = update
     #creates a new gossip message and sends it
     #gossip mesage contains replica timestamp and our update log
     def gossip(self):
-        for u in self.update_log
+        send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp,"updates":self.update_log})
+
     #checks the update log for updates that can be made stable
     def apply_updates(self):
-        for u in self.update_log:
+        #stabilises updates where it is possible to do so
+        for operation_id,u in self.update_log.items():
             if not u["stable"] and self.replica_timestamp.is_geq(u["timestamp"]):
                 if u["type"] == "add_rating":
                     data = u["data"]
                     add_rating(data["user_id"],data["movie_id"])
                 u["stable"] = True
+        #checks the timestamp table to see if we can remove some updates, this is useful
+        if len(self.timestamp_table) == number_of_servers:
+            for id,u in self.update_log.items():
+                #check if we can remove it
+                if u["stable"] and can_remove_update(u,self.timestamp_table):
+                    del self.update_log[id]
+
+
 
     #handles the front end update request to add a rating
     #for now we don't concern ourselves with the users table and checking whether the movie exists
-    def add_rating(self,prev_timestamp,user_id,movie_id):
+    def add_rating(self,operation_id,prev_timestamp,user_id,movie_id):
         if movie_id in movies:
             update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id}}
-            self.update_log.append(update)
+            self.update_log[operation_id] = update
             self.replica_timestamp.increment()
             return {"timestamp":self.replica_timestamp.vector}
         else:
@@ -133,12 +163,13 @@ class Replica(object):
 
 #register all the classes here
 def main():
+    number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
     server_ids = get_all_replicas()  # get the ids of all the other remote servers
-    id_string = str(uuid1())
+    id_string = str(uuid4())
     server_ids.append(id_string)
     daemon = Pyro4.Daemon()                # make a Pyro daemon
     ns = Pyro4.locateNS()                   # find the name server
-    r = Replica(server_ids,id_string)
+    r = Replica(server_ids,id_string,number_of_servers)
     uri = daemon.register(r)   # register the object not the class
     ns.register(id_string + ".replica", uri)   # register the object with a name in the name server
     print("Server with id %s is ready." %(id_string))

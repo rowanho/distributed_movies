@@ -2,7 +2,7 @@
 pyro4-ns &
 for ((i=1;i<=$1;i++))
 do
-    python replica.py &
+    python replica.py $1 &
 done
 python frontend.py &
 

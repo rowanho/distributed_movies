@@ -1,6 +1,7 @@
 # saved as greeting-server.py
 import Pyro4
 import threading
+from uuid import uuid1
 from lib.vector_clock import vector_clock
 class NoFreeServerException(Exception):
     pass
@@ -16,7 +17,8 @@ class FrontEnd(object):
         if replica_id != -1:
             #get a replica
             replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
-            res = replica.add_rating(user_id,movie_id)
+            operation_id = str(uuid1())
+            res = replica.add_rating(operation_id,user_id,movie_id)
             self.prev_timestamp.updateToMax(res["timestamp"])
         else:
             raise NoFreeServerException("Couldn't find a free server")
