@@ -15,7 +15,14 @@ class vector_clock():
                 self.vector[id] = val
     def increment(self):
         self.vector[self.specific_id] += 1
-
+    #returns True iff our time stamp is greater than or equal to our given timestammp
+    def is_geq(self,v2):
+        for id,val in v2.items():
+            if id not in self.vector:
+                self.vector[id] = 0
+            if val > self.vector[id]:
+                return False
+        return True
     #returns True or False given another vector clock
     def is_concurrent(self,v2):
         found_less_than = False

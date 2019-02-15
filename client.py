@@ -22,17 +22,20 @@ def add_movie_rating(frontend):
     print("Adding rating %f for movie name %s..."%(movie_rating,movie_name))
     # actually call the remote functions here
 
+def get_all_ratings(frontend):
+    movie_id = int(input("Enter movie id: "))
+    return frontend.get_all_ratings(movie_id)
 
-def get_movie_rating(frontend):
+def get_user_rating(frontend):
     user_id = int(input("Enter user id: "))
-    movie_id = int(input("Enter movie_id: "))
+    movie_id = int(input("Enter movie id: "))
     # actually call the remote functions here
     return frontend.get_user_rating(user_id,movie_id)
 
 
 def main():
     frontend = Pyro4.Proxy("PYRONAME:frontend")    # use name server object lookup uri shortcut
-    rating = get_movie_rating(frontend)
-    print("Rating: ",rating)
+    ratings = get_all_ratings(frontend)
+    print("Ratings: \n",ratings)
 if __name__ == "__main__":
     main()

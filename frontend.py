@@ -33,9 +33,19 @@ class FrontEnd(object):
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
-#input - the Pyro4 ns object
+    def get_all_ratings(self,movie_id):
+        replica_id = get_free_server()
+        if replica_id != -1:
+            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
+            timestamp = self.prev_timestamp.vector
+            res = replica.get_all_ratings(timestamp,movie_id)
+            self.prev_timestamp.updateToMax(res["timestamp"])
+            return res["ratings"]
+        else:
+            raise NoFreeServerException("Couldn't find a free server")
+
 #iterates through servers on the name system and returns the uuid of the one that is free
-#if it can't find one, returns 0
+#if it can't find one, returns -1
 def get_free_server():
     ns = Pyro4.locateNS()
     for key in ns.list():
@@ -60,10 +70,10 @@ def main():
     uri = daemon.register(FrontEnd)   # register the Pyro object
     ns.register("frontend", uri)   # register the object with a name in the name server
     print("Ready.")
-    def my_loop():
-        threading.Timer(3.0, my_loop).start()
-        print("First free server found: ",get_free_server())
-    my_loop()
+    #def my_loop():
+    #    threading.Timer(3.0, my_loop).start()
+    #    print("First free server found: ",get_free_server())
+    #my_loop()
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 if __name__ == "__main__":
     main()

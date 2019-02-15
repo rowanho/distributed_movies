@@ -7,13 +7,14 @@ from lib.csv_functions import get_all_movies,get_all_ratings
 #simple vector clock object
 from lib.vector_clock import vector_clock
 #STATUS is either set to 'free','busy' or 'down'
-#TODO - timestamps should be passed in client side during queries
+#TODO - handle updates - check update log to see whether updates can actually be applied
+#this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly
 
 ### Custom exceptions
 class InvalidMovieIdException(Exception):
-
     pass
+
 class InvalidRatingIdException(Exception):
     pass
 
@@ -27,6 +28,7 @@ def get_all_replicas():
             server_ids += key.split('.')[0]
     return server_ids
 
+
 #picks some other replicas at random and sends gossip to them
 #gossip_msg in format {replica_id:id, timestamp: vector_timestamp, updates:[list of updates]}
 def send_gossip(limit,our_replica):
@@ -37,13 +39,14 @@ def send_gossip(limit,our_replica):
         limit = len(server_ids)
     for i in range(limit):
         replica = Pyro4.Proxy("PYRONAME:" + server_ids[i] +".replica")
-        replica.gossip(our_replica.next_gossip_message)
+        replica.gossip_recieve(our_replica.next_gossip_message)
     replica.next_gossip_message = {}
 
 
 ####remote functions to get the status of the server####
 @Pyro4.expose
 class Replica(object):
+
 
     def __init__(self,server_ids,id):
         self.status = 'free'
@@ -59,20 +62,35 @@ class Replica(object):
         #the updates recieved to send in the next gossip message
         next_gossip_message = {"timestamp":self.replica_timestamp,"gossip_data":[]}
 
+
     #gets the status of the server
     def get_status(self):
         return self.status
 
+    ### gossip stuff ###
 
     #recieves gossip messages from another server
-    def gossip(self,gossip_msg):
+    def gossip_recieve(self,gossip_msg):
         pass
 
+    #creates a new gossip message and sends it
+    #gossip mesage contains replica timestamp and our update log
+    def gossip(self):
+        for u in self.update_log
+    #checks the update log for updates that can be made stable
+    def apply_updates(self):
+        for u in self.update_log:
+            if not u["stable"] and self.replica_timestamp.is_geq(u["timestamp"]):
+                if u["type"] == "add_rating":
+                    data = u["data"]
+                    add_rating(data["user_id"],data["movie_id"])
+                u["stable"] = True
 
+    #handles the front end update request to add a rating
+    #for now we don't concern ourselves with the users table and checking whether the movie exists
     def add_rating(self,prev_timestamp,user_id,movie_id):
         if movie_id in movies:
-            self.replica_timestamp.increment()
-            update =  {"timestamp":self.replica_timestamp.vector,"type":"add_rating","user_id":user_id,"movie_id":movie_id}
+            update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id}}
             self.update_log.append(update)
             self.replica_timestamp.increment()
             return {"timestamp":self.replica_timestamp.vector}
@@ -81,17 +99,18 @@ class Replica(object):
 
 
     #applys the update to add a new rating or updates an existing rating
-    def apply_add_rating(self, update):
+    def apply_add_rating(self, user_id,movie_id):
         if movie_id in movies:
             self.ratings[user_id,movie_id] = rating
             self.executed_operations.append(update)
-            self.value_timestamp.append()
+            self.value_timestamp.increment()
+
 
 
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,prev_timestamp,user_id,movie_id):
         #request can be blocking, we should wait until we have updated out timestamp sufficiently
-        while not self.value_timestamp.is_concurrent(prev_timestamp):
+        while not self.value_timestamp.is_geq(prev_timestamp):
             time.sleep(1.0)
         if (user_id,movie_id) in self.ratings:
             return {"timestamp" : self.replica_timestamp.vector, "rating": self.ratings[user_id,movie_id]}
@@ -100,18 +119,16 @@ class Replica(object):
 
 
     #returns the rating of a movie by all users
-    def get_overall_rating(self,movie_id):
-        total = 0.0
-        count = 0
+    def get_all_ratings(self,prev_timestamp,movie_id):
+        while not self.value_timestamp.is_geq(prev_timestamp):
+            time.sleep(1.0)
+        ratings = []
         #slow - might be faster if we restructured the data
         for key in self.ratings:
             if key[1] == movie_id:
-                total += self.ratings[key]
-                count += 1
-        if count > 0:
-            return {"timestamp": self.replica_timestamp.vector, "rating" : total/count}
-        else:
-            return {"timestamp": self.replica_timestamp.vector, "rating" : -1}
+                ratings.append(self.ratings[key])
+        return {"timestamp": self.replica_timestamp.vector, "ratings" : ratings}
+
 
 
 #register all the classes here
