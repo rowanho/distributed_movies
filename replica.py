@@ -72,6 +72,12 @@ class Replica(object):
         self.executed_operations = []
         self.timestamp_table = {}
 
+        self.interval = 1.0
+        thread = threading.Thread(target=self.run, args=())
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
+
+
 
     #gets the status of the server
     def get_status(self):
@@ -88,7 +94,7 @@ class Replica(object):
         #add any updates we don't already have to the update log
         for operation_id in gossip_msg["updates"]:
             update = gossip_msg["updates"][operation_id]
-            #update may be stable in other replica but not yet stable in ours    
+            #update may be stable in other replica but not yet stable in ours
             update["stable"] = False
             if operation_id not in self.update_log:
                 self.update_log[operation_id] = update
@@ -99,6 +105,12 @@ class Replica(object):
     #gossip mesage contains replica timestamp and our update log
     def gossip(self):
         send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp.vector,"updates":self.update_log})
+
+    def run(self):
+        while True:
+            self.gossip()
+            self.apply_updates()
+            time.sleep(self.interval)
 
     #checks the update log for updates that can be made stable
     def apply_updates(self):
@@ -173,13 +185,7 @@ def main():
     uri = daemon.register(r)   # register the object not the class
     ns.register(id_string + ".replica", uri)   # register the object with a name in the name server
     print("Server with id %s is ready." %(id_string))
-    #runs the gossip and check update log for updates to apply periodically
-    def replica_loop():
-        threading.Timer(10.0,replica_loop).start()
-        r.gossip()
-        r.apply_updates()
-     #gossip messages
-    replica_loop()
+
 
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
