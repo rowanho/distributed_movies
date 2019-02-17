@@ -1,13 +1,12 @@
-class vector_clock():
-    vector = {}
-    specific_id = ''
+class vector_clock:
     #sets the vector clock to 0 for the list of ids given
     #id_list - a list of the uuids of the replicas
     #specific_id - optional, the replicas need to use this when incrementing
     def __init__(self,id_list,specific_id=''):
+        self.vector = {}
+        self.specific_id = specific_id
         for id in id_list:
             self.vector[id] = 0
-        self.specific_id = specific_id
     #given a second clock, brings us up to date
     def updateToMax(self,v2):
         for id, val in v2.items():

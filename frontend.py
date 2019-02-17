@@ -5,6 +5,13 @@ from uuid import uuid1
 from lib.vector_clock import vector_clock
 class NoFreeServerException(Exception):
     pass
+    ### Custom exceptions
+class InvalidMovieIdException(Exception):
+    pass
+
+class InvalidRatingIdException(Exception):
+    pass
+
 @Pyro4.expose
 class FrontEnd(object):
     def __init__(self):
@@ -12,57 +19,64 @@ class FrontEnd(object):
         self.prev_timestamp = vector_clock([])
 
 
-    def add_rating(self,user_id,movie_id):
-        replica_id = get_free_server()
-        if replica_id != -1:
-            #get a replica
-            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
-            operation_id = str(uuid1())
-            res = replica.add_rating(operation_id,user_id,movie_id)
-            self.prev_timestamp.updateToMax(res["timestamp"])
+    def add_rating(self,user_id,movie_id,rating):
+        key = get_free_server()
+        if key != -1:
+            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+                operation_id = str(uuid1())
+                try:
+                    timestamp = self.prev_timestamp.vector
+                    res = replica.add_rating(operation_id,timestamp,user_id,movie_id,rating)
+                    self.prev_timestamp.updateToMax(res["timestamp"])
+                    return "Successfully added rating!"
+                except InvalidMovieIdException:
+                    return "Could not find movie with that id!"
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
 
     def get_user_rating(self,user_id,movie_id):
-        replica_id = get_free_server()
-        if replica_id != -1:
-            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
-            timestamp = self.prev_timestamp.vector
-            res = replica.get_user_rating(timestamp,user_id,movie_id)
-            self.prev_timestamp.updateToMax(res["timestamp"])
-            return res["rating"]
+        key = get_free_server()
+        if key != -1:
+            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+                timestamp = self.prev_timestamp.vector
+                res = replica.get_user_rating(timestamp,user_id,movie_id)
+                self.prev_timestamp.updateToMax(res["timestamp"])
+                return res["rating"]
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
     def get_all_ratings(self,movie_id):
-        replica_id = get_free_server()
-        if replica_id != -1:
-            replica = Pyro4.Proxy("PYRONAME:" + replica_id + ".replica")
-            timestamp = self.prev_timestamp.vector
-            res = replica.get_all_ratings(timestamp,movie_id)
-            self.prev_timestamp.updateToMax(res["timestamp"])
-            return res["ratings"]
+        key = get_free_server()
+        if key != -1:
+            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+                timestamp = self.prev_timestamp.vector
+                res = replica.get_all_ratings(timestamp,movie_id)
+                self.prev_timestamp.updateToMax(res["timestamp"])
+                return res["ratings"]
         else:
             raise NoFreeServerException("Couldn't find a free server")
 
-#iterates through servers on the name system and returns the uuid of the one that is free
+#iterates through servers on the name system and returns the first one that is free
 #if it can't find one, returns -1
 def get_free_server():
     ns = Pyro4.locateNS()
     for key in ns.list():
         if 'replica' in key:
-            replica_status = Pyro4.Proxy("PYRONAME:" + key)
-            is_free = False
-            try:
-                status = replica_status.get_status()
-                print(status)
-                if status == 'free':
-                    is_free = True
-            except:
-                continue
-            if is_free:
-                return key.split('.')[0]
+            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+                is_free = False
+                try:
+                    print(key)
+                    print(replica)
+                    print('getting status')
+                    if replica.get_status() == 'free':
+                        print('free')
+                        is_free = True
+                except:
+                    continue
+                if is_free:
+                    return key
+            print(replica)
     return -1 # if no free server found
 
 #register all the classes here

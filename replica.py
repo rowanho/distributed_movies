@@ -12,6 +12,7 @@ from lib.vector_clock import vector_clock
 #this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly
 
+
 ### Custom exceptions
 class InvalidMovieIdException(Exception):
     pass
@@ -21,28 +22,31 @@ class InvalidRatingIdException(Exception):
 
 
 #gets a list of all the other replicas registered on pyro
-def get_all_replicas():
+def get_all_replicas(our_id):
     server_ids = []
     ns = Pyro4.locateNS()
     for key in ns.list():
-        if 'replica' in key:
-            server_ids += key.split('.')[0]
+        if 'replica' in key and our_id not in key:
+            server_ids.append(key.split('.')[0])
     return server_ids
 
 
 #picks some other replicas at random and sends gossip to them
 #gossip_msg in format {replica_id:id, timestamp: vector_timestamp, updates:[list of updates]}
-def send_gossip(limit,our_replica):
-    server_ids = get_all_replicas()
+def send_gossip(limit,message):
+    server_ids = get_all_replicas(message["id"])
     #pick random server_ids up until the limit
     random.shuffle(server_ids)
     if len(server_ids) < limit:
         limit = len(server_ids)
-    for i in range(limit):
-        replica = Pyro4.Proxy("PYRONAME:" + server_ids[i] +".replica")
-        replica.gossip_recieve(our_replica.next_gossip_message)
-    replica.next_gossip_message = {}
-
+    count = 0
+    for id in server_ids:
+        with Pyro4.Proxy("PYRONAME:" + id +".replica") as replica:
+            if replica.get_status()== "free":
+                replica.gossip_recieve(message)
+                count += 1
+            if count >= limit:
+                break
 
 #takes in an update and timestamp table and returns True iff we can remove it
 def can_remove_update(update,timestamp_table):
@@ -54,12 +58,10 @@ def can_remove_update(update,timestamp_table):
 ####remote functions to get the status of the server####
 @Pyro4.expose
 class Replica(object):
-
-
+    status = 'free'
     def __init__(self,server_ids,id,number_of_servers):
         self.id = id
         self.number_of_servers = number_of_servers
-        self.status = 'free'
         self.movies = get_all_movies()
         self.ratings = get_all_ratings()
         #this timestamp is inced whenever we handle an update request
@@ -69,8 +71,6 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-        #the updates recieved to send in the next gossip message
-        next_gossip_message = {"timestamp":self.replica_timestamp,"gossip_data":[]}
 
 
     #gets the status of the server
@@ -78,25 +78,27 @@ class Replica(object):
         return self.status
 
     ### gossip stuff ###
-
     #recieves gossip messages from another server
     def gossip_recieve(self,gossip_msg):
-        print("Received gossip from server id " + gossip_msg["id"])
         #update the timestamp in the timestamp table
         if gossip_msg["id"] not in self.timestamp_table:
             self.timestamp_table["id"] = vector_clock([])
         self.timestamp_table["id"].updateToMax(gossip_msg["timestamp"])
+
         #add any updates we don't already have to the update log
         for operation_id in gossip_msg["updates"]:
             update = gossip_msg["updates"][operation_id]
-            #update may be stable in other replica but not yet stable in ours
+            #update may be stable in other replica but not yet stable in ours    
             update["stable"] = False
             if operation_id not in self.update_log:
                 self.update_log[operation_id] = update
+        #update out own replica timestamp to reflect the updates we have now recieved
+        self.replica_timestamp.updateToMax(gossip_msg["timestamp"])
+
     #creates a new gossip message and sends it
     #gossip mesage contains replica timestamp and our update log
     def gossip(self):
-        send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp,"updates":self.update_log})
+        send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp.vector,"updates":self.update_log})
 
     #checks the update log for updates that can be made stable
     def apply_updates(self):
@@ -105,22 +107,23 @@ class Replica(object):
             if not u["stable"] and self.replica_timestamp.is_geq(u["timestamp"]):
                 if u["type"] == "add_rating":
                     data = u["data"]
-                    add_rating(data["user_id"],data["movie_id"])
+                    if operation_id not in self.executed_operations:
+                        self.apply_add_rating(data["user_id"],data["movie_id"],data["rating"])
+                        self.executed_operations.append(operation_id)
                 u["stable"] = True
         #checks the timestamp table to see if we can remove some updates, this is useful
-        if len(self.timestamp_table) == number_of_servers:
+        if len(self.timestamp_table) == self.number_of_servers:
             for id,u in self.update_log.items():
                 #check if we can remove it
                 if u["stable"] and can_remove_update(u,self.timestamp_table):
                     del self.update_log[id]
 
 
-
     #handles the front end update request to add a rating
     #for now we don't concern ourselves with the users table and checking whether the movie exists
-    def add_rating(self,operation_id,prev_timestamp,user_id,movie_id):
-        if movie_id in movies:
-            update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id}}
+    def add_rating(self,operation_id,prev_timestamp,user_id,movie_id,rating):
+        if movie_id in self.movies:
+            update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id,"rating":rating}}
             self.update_log[operation_id] = update
             self.replica_timestamp.increment()
             return {"timestamp":self.replica_timestamp.vector}
@@ -129,13 +132,10 @@ class Replica(object):
 
 
     #applys the update to add a new rating or updates an existing rating
-    def apply_add_rating(self, user_id,movie_id):
-        if movie_id in movies:
+    def apply_add_rating(self, user_id,movie_id,rating):
+        if movie_id in self.movies:
             self.ratings[user_id,movie_id] = rating
-            self.executed_operations.append(update)
             self.value_timestamp.increment()
-
-
 
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,prev_timestamp,user_id,movie_id):
@@ -164,8 +164,8 @@ class Replica(object):
 #register all the classes here
 def main():
     number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
-    server_ids = get_all_replicas()  # get the ids of all the other remote servers
     id_string = str(uuid4())
+    server_ids = get_all_replicas(id_string)  # get the ids of all the other remote servers
     server_ids.append(id_string)
     daemon = Pyro4.Daemon()                # make a Pyro daemon
     ns = Pyro4.locateNS()                   # find the name server
@@ -173,7 +173,14 @@ def main():
     uri = daemon.register(r)   # register the object not the class
     ns.register(id_string + ".replica", uri)   # register the object with a name in the name server
     print("Server with id %s is ready." %(id_string))
-    #threading.Timer(1.0,send_gossip,args=(r)).start() #gossip messages
+    #runs the gossip and check update log for updates to apply periodically
+    def replica_loop():
+        threading.Timer(10.0,replica_loop).start()
+        r.gossip()
+        r.apply_updates()
+     #gossip messages
+    replica_loop()
+
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
 if __name__ == "__main__":
