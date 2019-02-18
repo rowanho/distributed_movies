@@ -1,6 +1,5 @@
 import csv
-class NullQueryException(Exception):
-    pass
+
 MOVIE_DIR = 'ml-latest-small'
 
 #####functions that read/write to csv#####

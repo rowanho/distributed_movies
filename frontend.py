@@ -3,14 +3,8 @@ import Pyro4
 import threading
 from uuid import uuid1
 from lib.vector_clock import vector_clock
-class NoFreeServerException(Exception):
-    pass
-    ### Custom exceptions
-class InvalidMovieIdException(Exception):
-    pass
+import lib.custom_exceptions
 
-class InvalidRatingIdException(Exception):
-    pass
 
 @Pyro4.expose
 class FrontEnd(object):

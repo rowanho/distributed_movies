@@ -1,5 +1,7 @@
 # saved as greeting-client.py
 import Pyro4
+import lib.custom_exceptions
+
 #returns a float divisble by 0.5 - the rating of a movie
 def add_movie_rating(frontend):
     valid = False

@@ -7,18 +7,13 @@ import sys
 from lib.csv_functions import get_all_movies,get_all_ratings
 #simple vector clock object
 from lib.vector_clock import vector_clock
+
+import lib.custom_exceptions
 #STATUS is either set to 'free','busy' or 'down'
 #TODO - handle updates - check update log to see whether updates can actually be applied
 #this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly
 
-
-### Custom exceptions
-class InvalidMovieIdException(Exception):
-    pass
-
-class InvalidRatingIdException(Exception):
-    pass
 
 
 #gets a list of all the other replicas registered on pyro
