@@ -4,8 +4,8 @@ import threading
 from uuid import uuid1
 from contextlib import contextmanager
 from lib.vector_clock import vector_clock
-import lib.custom_exceptions
-
+from lib.custom_exceptions import *
+import random
 
 #custom context manager for opening replica pyro connection and handling status automatically
 @contextmanager
@@ -15,7 +15,7 @@ def openReplica(key):
         replica.set_status('over-loaded')
         yield replica
     finally:
-        replica.set_status('available')
+        replica.set_status('active')
         replica._pyroRelease()
 
 
@@ -27,19 +27,27 @@ class FrontEnd(object):
 
 
     def add_rating(self,user_id,movie_id,rating):
-        key = get_free_server()
-        if key != -1:
-            with openReplica(key) as replica:
-                operation_id = str(uuid1())
-                try:
-                    timestamp = self.prev_timestamp.vector
-                    res = replica.add_rating(operation_id,timestamp,user_id,movie_id,rating)
-                    self.prev_timestamp.updateToMax(res["timestamp"])
-                    return "Successfully added rating!"
-                except InvalidMovieIdException:
-                    return "Could not find movie with that id!"
-        else:
-            raise NoFreeServerException("Couldn't find a free server")
+        done = False
+        while not done:
+            key = get_free_server()
+            if key != -1:
+                with openReplica(key) as replica:
+                    operation_id = str(uuid1())
+                    try:
+                        timestamp = self.prev_timestamp.vector
+                        res = replica.add_rating(operation_id,timestamp,user_id,movie_id,rating)
+                        self.prev_timestamp.updateToMax(res["timestamp"])
+                        done = True
+                        return "Successfully added rating!"
+                    except Exception as e:
+                        #Raised if movie id not valid
+                        if str(e) == "InvalidMovieIdException":
+                            done = True
+                            return "Movie not in the database"
+                        #Raised if server crashes during our interactions
+                        elif str(e) == "ServerCrashedException":
+                            #try again and get another server
+                            continue
 
 
     def get_user_rating(self,user_id,movie_id):
@@ -51,30 +59,44 @@ class FrontEnd(object):
                 self.prev_timestamp.updateToMax(res["timestamp"])
                 return res["rating"]
         else:
-            raise NoFreeServerException("Couldn't find a free server")
+            raise Exception("NoFreeServerException")
 
     def get_all_ratings(self,movie_id):
-        key = get_free_server()
-        if key != -1:
-            with openReplica(key) as replica:
-                timestamp = self.prev_timestamp.vector
-                res = replica.get_all_ratings(timestamp,movie_id)
-                self.prev_timestamp.updateToMax(res["timestamp"])
-                return res["ratings"]
-        else:
-            raise NoFreeServerException("Couldn't find a free server")
+        done = False
+        while not done:
+            key = get_free_server()
+            if key != -1:
+                with openReplica(key) as replica:
+                    timestamp = self.prev_timestamp.vector
+                    try:
+                        res = replica.get_all_ratings(timestamp,movie_id)
+                        self.prev_timestamp.updateToMax(res["timestamp"])
+                        done = True
+                        return res["ratings"]
+                    except Exception as e:
+                        if str(e) == "InvalidMovieIdException":
+                            done = True
+                            return "Movie not in the database"
+                        elif str(e) == "ServerCrashedException":
+                            #try again and get another server
+                            continue
+
 
 #iterates through servers on the name system and returns the first one that is free
 #if it can't find one, returns -1
 def get_free_server():
     ns = Pyro4.locateNS()
-    for key in ns.list():
+    keys = list(ns.list().keys())
+    for key in keys:
         if 'replica' in key:
             with Pyro4.Proxy("PYRONAME:" + key) as replica:
                 is_free = False
                 try:
+                    print(replica.get_status())
+                    print(replica.is_online())
                     if replica.get_status() == 'active' and replica.is_online():
                         print("Front end found available server: " + key)
+                        print
                         is_free = True
                 except:
                     continue

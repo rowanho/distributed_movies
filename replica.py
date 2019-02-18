@@ -8,7 +8,7 @@ from lib.csv_functions import get_all_movies,get_all_ratings
 #simple vector clock object
 from lib.vector_clock import vector_clock
 
-import lib.custom_exceptions
+from lib.custom_exceptions import *
 #self.status is either set to 'active', 'over-loaded' or 'offline'
 #TODO - status - simulate being busy
 #this can happen when our timestamp is geq the timestamp of the update
@@ -69,10 +69,10 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-        self.crash_probability = 0.1
+        self.crash_probability = 0.5
         self.restore_probability = 0.5
-        self.interval = 1.0
-        thread = threading.Thread(target=self.run_gossip, args=()) # separate thread for gossip
+        self.interval = 0.1
+        thread = threading.Thread(target=self.run, args=()) # separate thread for gossip
         thread.daemon = True
         thread.start()
 
@@ -113,12 +113,13 @@ class Replica(object):
 
 
     #gossips and checks for updates to make stable at fixed intervals
-    def run_gossip(self):
+    def run(self):
         while True:
             if self.online:
                 self.gossip()
                 self.apply_updates()
-                time.sleep(self.interval)
+            self.simulate_crash()
+            time.sleep(self.interval)
 
     #simulates the chance of a server going down
     #every interval there is the probability that the server crashes
@@ -154,13 +155,15 @@ class Replica(object):
     #handles the front end update request to add a rating
     #for now we don't concern ourselves with the users table and checking whether the movie exists
     def add_rating(self,operation_id,prev_timestamp,user_id,movie_id,rating):
+        if not self.online:
+            raise Exception("ServerCrashedException")
         if movie_id in self.movies:
             update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id,"rating":rating}}
             self.update_log[operation_id] = update
             self.replica_timestamp.increment()
             return {"timestamp":self.replica_timestamp.vector}
         else:
-            raise InvalidMovieIdException('Cannot find movie with that id')
+            raise Exception('InvalidMovieIdException')
 
 
     #applys the update to add a new rating or updates an existing rating
@@ -171,19 +174,23 @@ class Replica(object):
 
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,prev_timestamp,user_id,movie_id):
+        if not self.online:
+            raise Exception("ServerCrashedException")
         #request can be blocking, we should wait until we have updated out timestamp sufficiently
-        while not self.value_timestamp.is_geq(prev_timestamp):
-            time.sleep(1.0)
+        if not self.value_timestamp.is_geq(prev_timestamp):
+            raise Exception("NotUpToDateException")
         if (user_id,movie_id) in self.ratings:
             return {"timestamp" : self.replica_timestamp.vector, "rating": self.ratings[user_id,movie_id]}
         else:
-            raise InvalidRatingIdException('Cannot find rating with that user/movie id')
+            raise Exception('InvalidRatingIdException')
 
 
     #returns the rating of a movie by all users
     def get_all_ratings(self,prev_timestamp,movie_id):
-        while not self.value_timestamp.is_geq(prev_timestamp):
-            time.sleep(1.0)
+        if not self.online:
+            raise Exception("ServerCrashedException")
+        if not self.value_timestamp.is_geq(prev_timestamp):
+            raise Exception("InvalidRatingIdException")
         ratings = []
         #slow - might be faster if we restructured the data
         for key in self.ratings:

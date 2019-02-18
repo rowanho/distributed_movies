@@ -18,3 +18,8 @@ class InvalidMovieIdException(Exception):
 #Caught by: Front end
 class InvalidRatingIdException(Exception):
     pass
+
+#Raised by: replica
+#Caught by: Front end
+class NotUpToDateException(Exception):
+    pass
