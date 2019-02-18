@@ -2,8 +2,21 @@
 import Pyro4
 import threading
 from uuid import uuid1
+from contextlib import contextmanager
 from lib.vector_clock import vector_clock
 import lib.custom_exceptions
+
+
+#custom context manager for opening replica pyro connection and handling status automatically
+@contextmanager
+def openReplica(key):
+    replica = Pyro4.Proxy("PYRONAME:" + key)
+    try:
+        replica.set_status('over-loaded')
+        yield replica
+    finally:
+        replica.set_status('available')
+        replica._pyroRelease()
 
 
 @Pyro4.expose
@@ -16,7 +29,7 @@ class FrontEnd(object):
     def add_rating(self,user_id,movie_id,rating):
         key = get_free_server()
         if key != -1:
-            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+            with openReplica(key) as replica:
                 operation_id = str(uuid1())
                 try:
                     timestamp = self.prev_timestamp.vector
@@ -32,7 +45,7 @@ class FrontEnd(object):
     def get_user_rating(self,user_id,movie_id):
         key = get_free_server()
         if key != -1:
-            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+            with openReplica(key) as replica:
                 timestamp = self.prev_timestamp.vector
                 res = replica.get_user_rating(timestamp,user_id,movie_id)
                 self.prev_timestamp.updateToMax(res["timestamp"])
@@ -43,7 +56,7 @@ class FrontEnd(object):
     def get_all_ratings(self,movie_id):
         key = get_free_server()
         if key != -1:
-            with Pyro4.Proxy("PYRONAME:" + key) as replica:
+            with openReplica(key) as replica:
                 timestamp = self.prev_timestamp.vector
                 res = replica.get_all_ratings(timestamp,movie_id)
                 self.prev_timestamp.updateToMax(res["timestamp"])
@@ -60,11 +73,8 @@ def get_free_server():
             with Pyro4.Proxy("PYRONAME:" + key) as replica:
                 is_free = False
                 try:
-                    print(key)
-                    print(replica)
-                    print('getting status')
-                    if replica.get_status() == 'free':
-                        print('free')
+                    if replica.get_status() == 'active' and replica.is_online():
+                        print("Front end found available server: " + key)
                         is_free = True
                 except:
                     continue
@@ -73,17 +83,13 @@ def get_free_server():
             print(replica)
     return -1 # if no free server found
 
-#register all the classes here
+#register on pyro here
 def main():
-    daemon = Pyro4.Daemon()                # make a Pyro daemon
+    daemon = Pyro4.Daemon()
     ns = Pyro4.locateNS()
-    uri = daemon.register(FrontEnd)   # register the Pyro object
-    ns.register("frontend", uri)   # register the object with a name in the name server
+    uri = daemon.register(FrontEnd)
+    ns.register("frontend", uri)
     print("Ready.")
-    #def my_loop():
-    #    threading.Timer(3.0, my_loop).start()
-    #    print("First free server found: ",get_free_server())
-    #my_loop()
-    daemon.requestLoop()                   # start the event loop of the server to wait for calls
+    daemon.requestLoop()
 if __name__ == "__main__":
     main()

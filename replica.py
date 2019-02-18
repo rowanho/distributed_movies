@@ -9,8 +9,8 @@ from lib.csv_functions import get_all_movies,get_all_ratings
 from lib.vector_clock import vector_clock
 
 import lib.custom_exceptions
-#STATUS is either set to 'free','busy' or 'down'
-#TODO - handle updates - check update log to see whether updates can actually be applied
+#self.status is either set to 'active', 'over-loaded' or 'offline'
+#TODO - status - simulate being busy
 #this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly
 
@@ -37,7 +37,7 @@ def send_gossip(limit,message):
     count = 0
     for id in server_ids:
         with Pyro4.Proxy("PYRONAME:" + id +".replica") as replica:
-            if replica.get_status()== "free":
+            if replica.get_status()== "active" and replica.is_online():
                 replica.gossip_recieve(message)
                 count += 1
             if count >= limit:
@@ -50,11 +50,14 @@ def can_remove_update(update,timestamp_table):
         if not timestamp_table.is_geq(update["timestamp"]):
             return False
     return True
+
+
 ####remote functions to get the status of the server####
 @Pyro4.expose
 class Replica(object):
-    status = 'free'
     def __init__(self,server_ids,id,number_of_servers):
+        self.online = True
+        self.status = 'active'
         self.id = id
         self.number_of_servers = number_of_servers
         self.movies = get_all_movies()
@@ -66,17 +69,23 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-
+        self.crash_probability = 0.1
+        self.restore_probability = 0.5
         self.interval = 1.0
-        thread = threading.Thread(target=self.run, args=())
-        thread.daemon = True                            # Daemonize thread
-        thread.start()                                  # Start the execution
-
+        thread = threading.Thread(target=self.run_gossip, args=()) # separate thread for gossip
+        thread.daemon = True
+        thread.start()
 
 
     #gets the status of the server
     def get_status(self):
         return self.status
+
+    def set_status(self,status):
+        self.status = status
+
+    def is_online(self):
+        return self.online
 
     ### gossip stuff ###
     #recieves gossip messages from another server
@@ -96,16 +105,32 @@ class Replica(object):
         #update out own replica timestamp to reflect the updates we have now recieved
         self.replica_timestamp.updateToMax(gossip_msg["timestamp"])
 
+
     #creates a new gossip message and sends it
     #gossip mesage contains replica timestamp and our update log
     def gossip(self):
         send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp.vector,"updates":self.update_log})
 
-    def run(self):
+
+    #gossips and checks for updates to make stable at fixed intervals
+    def run_gossip(self):
         while True:
-            self.gossip()
-            self.apply_updates()
-            time.sleep(self.interval)
+            if self.online:
+                self.gossip()
+                self.apply_updates()
+                time.sleep(self.interval)
+
+    #simulates the chance of a server going down
+    #every interval there is the probability that the server crashes
+    #if server is offline, it has a probability of coming back
+    def simulate_crash(self):
+        if self.online:
+            if random.random() < self.crash_probability:
+                self.online = False
+        else:
+            if random.random() < self.restore_probability:
+                self.online = True
+
 
     #checks the update log for updates that can be made stable
     def apply_updates(self):
@@ -168,14 +193,14 @@ class Replica(object):
 
 
 
-#register all the classes here
+#register object here
 def main():
     number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
     id_string = str(uuid4())
     server_ids = get_all_replicas(id_string)  # get the ids of all the other remote servers
     server_ids.append(id_string)
-    daemon = Pyro4.Daemon()                # make a Pyro daemon
-    ns = Pyro4.locateNS()                   # find the name server
+    daemon = Pyro4.Daemon()
+    ns = Pyro4.locateNS()
     r = Replica(server_ids,id_string,number_of_servers)
     uri = daemon.register(r)   # register the object not the class
     ns.register(id_string + ".replica", uri)   # register the object with a name in the name server
