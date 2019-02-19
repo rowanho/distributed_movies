@@ -51,15 +51,24 @@ class FrontEnd(object):
 
 
     def get_user_rating(self,user_id,movie_id):
-        key = get_free_server()
-        if key != -1:
-            with openReplica(key) as replica:
-                timestamp = self.prev_timestamp.vector
-                res = replica.get_user_rating(timestamp,user_id,movie_id)
-                self.prev_timestamp.updateToMax(res["timestamp"])
-                return res["rating"]
-        else:
-            raise Exception("NoFreeServerException")
+        done = False
+        while not done:
+            key = get_free_server()
+            if key != -1:
+                with openReplica(key) as replica:
+                    try:
+                        timestamp = self.prev_timestamp.vector
+                        res = replica.get_user_rating(timestamp,user_id,movie_id)
+                        self.prev_timestamp.updateToMax(res["timestamp"])
+                        return res["rating"]
+                    except Exception as e:
+                        if str(e) == "InvalidRatingIdException":
+                            done = True
+                            return "Rating not in the database"
+                        elif str(e) == "ServerCrashedException":
+                            #try again and get another server
+                            continue
+
 
     def get_all_ratings(self,movie_id):
         done = False
