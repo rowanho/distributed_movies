@@ -2,14 +2,14 @@
 pyro4-ns &
 for ((i=1;i<=$1;i++))
 do
-    python replica.py $1 &
+    python3 replica.py $1 &
 done
-python frontend.py &
+python3 frontend.py &
 
 function kill_script() {
     echo
     echo "Clean exit"
-    killall -SIGKILL python
+    killall -SIGKILL python3
     killall -SIGKILL pyro4-ns
     exit
 }

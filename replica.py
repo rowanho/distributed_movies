@@ -202,7 +202,10 @@ class Replica(object):
 
 #register object here
 def main():
-    number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
+    try:
+        number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
+    except:
+        number_of_servers = 3   # default to 3 servers
     id_string = str(uuid4())
     server_ids = get_all_replicas(id_string)  # get the ids of all the other remote servers
     server_ids.append(id_string)
