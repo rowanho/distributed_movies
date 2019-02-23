@@ -71,7 +71,7 @@ class Replica(object):
         self.timestamp_table = {}
         self.crash_probability = 0.5
         self.restore_probability = 0.5
-        self.interval = 0.1
+        self.interval = 2.0
         thread = threading.Thread(target=self.run, args=()) # separate thread for gossip
         thread.daemon = True
         thread.start()

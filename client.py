@@ -24,7 +24,7 @@ def add_movie_rating():
             print("Please enter a valid rating (multiple of 0.5 between 0.5 and 5)")
         if not valid:
             print("Please enter a valid rating (multiple of 0.5 between 0.5 and 5)")
-    print("Getting rating..")
+    print("Adding rating..")
     with Pyro4.Proxy("PYRONAME:frontend") as frontend:
         return frontend.add_rating(user_id,movie_id,movie_rating)
 
@@ -36,7 +36,7 @@ def get_all_ratings():
             valid = True
         except:
             print("Error, please enter a valid integer.")
-    print("getting ratings..")
+    print("Getting ratings..")
     with Pyro4.Proxy("PYRONAME:frontend") as frontend:
         return frontend.get_all_ratings(movie_id)
 
@@ -52,20 +52,35 @@ def get_user_rating():
         except:
             print("Please enter a valid integer for movie id/user id")
             continue
+    print("Getting rating..")
     # actually call the remote functions here
     with Pyro4.Proxy("PYRONAME:frontend") as frontend:
         return frontend.get_user_rating(user_id,movie_id)
 
-
+#ratings
+def make_ratings_dict():
+    d = {}
+    for i in range(11):
+        d[i * 0.5] = 0
+    return d
+#takes in array of ratings and returns a string that shows a nicer representation
+def display_ratings_list(ratings_list):
+    output = "Total ratings: " + str(len(ratings_list)) + "\n"
+    ratings_dict = make_ratings_dict()
+    for r in ratings_list:
+        ratings_dict[r] += 1
+    for key, val in ratings_dict.items():
+        output += str(key) +" : " + str(val) + "\n"
+    return output
 def main():
     exit = False
-    phrase = """Enter 1 to get all ratings for a movie, 2 to get a rating for a specific movie/user,\
- 3 to add a new rating, or q to quit:"""
+    phrase = "Enter 1 to get all ratings for a movie, 2 to get a rating for a specific movie/user,\
+ 3 to add a new rating, or q to quit:"
     while not exit:
         i = input(phrase)
         if i == '1':
             ratings = get_all_ratings()
-            print(ratings)
+            print(display_ratings_list(ratings))
         elif i == '2':
             res = get_user_rating()
             print(res)

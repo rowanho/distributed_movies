@@ -96,6 +96,7 @@ class FrontEnd(object):
 def get_free_server():
     ns = Pyro4.locateNS()
     keys = list(ns.list().keys())
+    random.shuffle(keys)
     for key in keys:
         if 'replica' in key:
             with Pyro4.Proxy("PYRONAME:" + key) as replica:
