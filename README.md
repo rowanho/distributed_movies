@@ -4,8 +4,14 @@ pyro4
 
 Running the program:
 
+Start the pyro name service:
+
+    pyro4-ns &
+    
 Run 3 (or more) instances of replica.py
+
     python3 replica.py &
+
 If you are using more than 3 servers, the number of servers you intend to start needs to be passed
 to replica.py, for example to start 4 servers the command:
     python3 replica.py 4 &
@@ -13,10 +19,13 @@ would be needed to run 4 times
 
 
 Run the front end server:
-    python3 frontend.py
+
+    python3 frontend.py &
+
 
 Run the client:
-    python3 client.py
+
+    python3 client.py &
 
 
 Client program:
