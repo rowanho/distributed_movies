@@ -2,21 +2,26 @@ Requirements:
 python 3.7
 pyro4
 
-Running the program:
+Running the program automatically on linux:
+
+Assign the script start_script.sh permissions to execute and run the script:
+
+    ./start_script.sh n
+
+Where n is the number of replica managers to use (an integer >= 3)
+
+Running the program manually:
 
 Start the pyro name service:
 
     pyro4-ns &
-    
+
 Run 3 (or more) instances of replica.py
 
-    python3 replica.py &
+    python3 replica.py n &
 
-If you are using more than 3 servers, the number of servers you intend to start needs to be passed
-to replica.py, for example to start 4 servers the command:
-    python3 replica.py 4 &
-would be needed to run 4 times
-
+Where n is the number of replica managers to use (an integer >= 3), and
+running replica.py n times.
 
 Run the front end server:
 
