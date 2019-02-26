@@ -33,10 +33,15 @@ Run the client:
     python3 client.py &
 
 
-Client program:
+Interacting with the client:
 
-Follow the prompts to query and update ratings. A user can
-add a movie rating, query all ratings for a movie, or query a specific rating by a user.
-The client should correctly validate inputs, and the server/client handles issues such as
-an attempt to fetch data for a movie id that does not exist.
-The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/
+Follow the prompts to query and update ratings. A user can add a movie rating,
+get all ratings for a movie id, or get a specific rating by user id & movie id.
+
+System information and guarantees:
+- The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/
+
+- The server/client handles invalid input formats and movies/ratings that do not exist.
+
+- Consistency ensured so that a client's queries respect at least the updates they have made,
+ by keeping a timestamp "prev" for each client.
