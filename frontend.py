@@ -68,6 +68,8 @@ class FrontEnd(object):
                         elif str(e) == "ServerCrashedException":
                             #try again and get another server
                             continue
+                        elif str(e) == "NotUpToDateException": # exception raised because server not up to date
+                            continue
 
 
     def get_all_ratings(self,movie_id):
@@ -89,6 +91,9 @@ class FrontEnd(object):
                         elif str(e) == "ServerCrashedException":
                             #try again and get another server
                             continue
+                        elif str(e) == "NotUpToDateException": # exception raised because server not up to date
+                            print("not up to date exception")
+                            continue
 
 
 #iterates through servers on the name system and returns the first one that is free
@@ -102,17 +107,13 @@ def get_free_server():
             with Pyro4.Proxy("PYRONAME:" + key) as replica:
                 is_free = False
                 try:
-                    print(replica.get_status())
-                    print(replica.is_online())
                     if replica.get_status() == 'active' and replica.is_online():
-                        print("Front end found available server: " + key)
-                        print
+                        #print("Front end found available server: " + key)
                         is_free = True
                 except:
                     continue
                 if is_free:
                     return key
-            print(replica)
     return -1 # if no free server found
 
 #register on pyro here

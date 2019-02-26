@@ -22,7 +22,7 @@ class vector_clock:
         self.vector[self.specific_id] += 1
 
 
-    #returns True iff our time stamp is greater than or equal to our given timestammp
+    #returns True iff our time stamp is greater than or equal to given timestammp vector
     def is_geq(self,v2):
         for id,val in v2.items():
             if id not in self.vector:

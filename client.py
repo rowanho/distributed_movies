@@ -3,7 +3,7 @@ import Pyro4
 from lib.custom_exceptions import *
 
 #returns a float divisble by 0.5 - the rating of a movie
-def add_movie_rating():
+def add_movie_rating(frontend):
     valid = False
     while not valid:
         input_movie = input("Enter movie id: ")
@@ -25,10 +25,10 @@ def add_movie_rating():
         if not valid:
             print("Please enter a valid rating (multiple of 0.5 between 0.5 and 5)")
     print("Adding rating..")
-    with Pyro4.Proxy("PYRONAME:frontend") as frontend:
-        return frontend.add_rating(user_id,movie_id,movie_rating)
 
-def get_all_ratings():
+    return frontend.add_rating(user_id,movie_id,movie_rating)
+
+def get_all_ratings(frontend):
     valid = False
     while not valid:
         try:
@@ -37,10 +37,10 @@ def get_all_ratings():
         except:
             print("Error, please enter a valid integer.")
     print("Getting ratings..")
-    with Pyro4.Proxy("PYRONAME:frontend") as frontend:
-        return frontend.get_all_ratings(movie_id)
 
-def get_user_rating():
+    return frontend.get_all_ratings(movie_id)
+
+def get_user_rating(frontend):
     valid = False
     while not valid:
         input_movie = input("Enter movie id: ")
@@ -54,8 +54,8 @@ def get_user_rating():
             continue
     print("Getting rating..")
     # actually call the remote functions here
-    with Pyro4.Proxy("PYRONAME:frontend") as frontend:
-        return frontend.get_user_rating(user_id,movie_id)
+
+    return frontend.get_user_rating(user_id,movie_id)
 
 #ratings
 def make_ratings_dict():
@@ -74,18 +74,19 @@ def display_ratings_list(ratings_list):
     return output
 def main():
     exit = False
+    frontend = Pyro4.Proxy("PYRONAME:frontend")
     phrase = "Enter 1 to get all ratings for a movie, 2 to get a rating for a specific movie/user,\
  3 to add a new rating, or q to quit:"
     while not exit:
         i = input(phrase)
         if i == '1':
-            ratings = get_all_ratings()
+            ratings = get_all_ratings(frontend)
             print(display_ratings_list(ratings))
         elif i == '2':
-            res = get_user_rating()
+            res = get_user_rating(frontend)
             print(res)
         elif i == '3':
-            res = add_movie_rating()
+            res = add_movie_rating(frontend)
             print(res)
         elif i == 'q':
             print('Exiting..')

@@ -10,7 +10,6 @@ from lib.vector_clock import vector_clock
 
 from lib.custom_exceptions import *
 #self.status is either set to 'active', 'over-loaded' or 'offline'
-#TODO - status - simulate being busy
 #this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly
 
@@ -69,9 +68,9 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-        self.crash_probability = 0.5
+        self.crash_probability = 0.7
         self.restore_probability = 0.5
-        self.interval = 2.0
+        self.interval = 5.0
         thread = threading.Thread(target=self.run, args=()) # separate thread for gossip
         thread.daemon = True
         thread.start()
@@ -141,7 +140,7 @@ class Replica(object):
                 if u["type"] == "add_rating":
                     data = u["data"]
                     if operation_id not in self.executed_operations:
-                        self.apply_add_rating(data["user_id"],data["movie_id"],data["rating"])
+                        self.apply_add_rating(u["timestamp"],data["user_id"],data["movie_id"],data["rating"])
                         self.executed_operations.append(operation_id)
                 u["stable"] = True
         #checks the timestamp table to see if we can remove some updates, this is useful
@@ -167,10 +166,10 @@ class Replica(object):
 
 
     #applys the update to add a new rating or updates an existing rating
-    def apply_add_rating(self, user_id,movie_id,rating):
+    def apply_add_rating(self, timestamp,user_id,movie_id,rating):
         if movie_id in self.movies:
             self.ratings[user_id,movie_id] = rating
-            self.value_timestamp.increment()
+            self.value_timestamp.updateToMax(timestamp)
 
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,prev_timestamp,user_id,movie_id):
@@ -190,13 +189,18 @@ class Replica(object):
         if not self.online:
             raise Exception("ServerCrashedException")
         if not self.value_timestamp.is_geq(prev_timestamp):
-            raise Exception("InvalidRatingIdException")
+            raise Exception("NotUpToDateException")
         ratings = []
         #slow - might be faster if we restructured the data
+        movie_exists = False
         for key in self.ratings:
             if key[1] == movie_id:
+                movie_exists = True
                 ratings.append(self.ratings[key])
-        return {"timestamp": self.replica_timestamp.vector, "ratings" : ratings}
+        if movie_exists:
+            return {"timestamp": self.replica_timestamp.vector, "ratings" : ratings}
+        else: # when the movie id isn't valid
+            raise Exception("InvalidMovieIdException")
 
 
 
