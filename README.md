@@ -41,6 +41,9 @@ get all ratings for a movie id, or get a specific rating by user id & movie id.
 System information and guarantees:
 - The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/
 
+- Replicas have a 10% chance of going down (reporting as "offline") every 1 second, and a 50% chance of coming back online if
+offline every second. Whenever a client uses a replica, the replica reports itself as "overloaded" for that period. 
+
 - The server/client handles invalid input formats and movies/ratings that do not exist.
 
 - Consistency ensured so that a client's queries respect at least the updates they have made,
