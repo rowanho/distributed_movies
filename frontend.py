@@ -60,7 +60,7 @@ class FrontEnd(object):
                         timestamp = self.prev_timestamp.vector
                         res = replica.get_user_rating(timestamp,user_id,movie_id)
                         self.prev_timestamp.updateToMax(res["timestamp"])
-                        return res["rating"]
+                        return res["movie_id"],res["movie_name"],res["rating"]
                     except Exception as e:
                         if str(e) == "InvalidRatingIdException":
                             done = True
@@ -83,7 +83,7 @@ class FrontEnd(object):
                         res = replica.get_all_ratings(timestamp,movie_id)
                         self.prev_timestamp.updateToMax(res["timestamp"])
                         done = True
-                        return res["ratings"]
+                        return res["movie_id"],res["movie_name"],res["ratings"]
                     except Exception as e:
                         if str(e) == "InvalidMovieIdException":
                             done = True

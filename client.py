@@ -54,8 +54,8 @@ def get_user_rating(frontend):
             continue
     print("Getting rating..")
     # actually call the remote functions here
+    return (user_id,) + frontend.get_user_rating(user_id,movie_id)
 
-    return frontend.get_user_rating(user_id,movie_id)
 
 #ratings
 def make_ratings_dict():
@@ -63,15 +63,23 @@ def make_ratings_dict():
     for i in range(11):
         d[i * 0.5] = 0
     return d
+
+
 #takes in array of ratings and returns a string that shows a nicer representation
-def display_ratings_list(ratings_list):
-    output = "Total ratings: " + str(len(ratings_list)) + "\n"
+def display_ratings_list(movie_id,movie_name,ratings_list):
+    output = "Ratings for movie %s, id %d\n" % (movie_name,movie_id)
+    output += "Total ratings: " + str(len(ratings_list)) + "\n"
     ratings_dict = make_ratings_dict()
     for r in ratings_list:
         ratings_dict[r] += 1
     for key, val in ratings_dict.items():
-        output += str(key) +" : " + str(val) + "\n"
+        if key.is_integer():
+            output += str(int(key)) +"   : " + str(val) + "\n"
+        else:
+            output += str(key) +" : " + str(val) + "\n"
     return output
+
+
 def main():
     exit = False
     frontend = Pyro4.Proxy("PYRONAME:frontend")
@@ -80,11 +88,14 @@ def main():
     while not exit:
         i = input(phrase)
         if i == '1':
-            ratings = get_all_ratings(frontend)
-            print(display_ratings_list(ratings))
+            movie_id,movie_name,ratings = get_all_ratings(frontend)
+            print(display_ratings_list(movie_id,movie_name,ratings))
         elif i == '2':
-            res = get_user_rating(frontend)
-            print(res)
+            user_id,movie_id,movie_name,rating = get_user_rating(frontend)
+            if rating.is_integer():
+                print("User %d rated %s a %d out of 5" % (user_id,movie_name,rating))
+            else:
+                print("User %d rated %s a %.1f out of 5" % (user_id,movie_name,rating))
         elif i == '3':
             res = add_movie_rating(frontend)
             print(res)

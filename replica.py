@@ -179,7 +179,8 @@ class Replica(object):
         if not self.value_timestamp.is_geq(prev_timestamp):
             raise Exception("NotUpToDateException")
         if (user_id,movie_id) in self.ratings:
-            return {"timestamp" : self.replica_timestamp.vector, "rating": self.ratings[user_id,movie_id]}
+            movie_name = self.movies[movie_id]
+            return {"timestamp" : self.replica_timestamp.vector, "rating": self.ratings[user_id,movie_id],"movie_id":movie_id,"movie_name":movie_name}
         else:
             raise Exception('InvalidRatingIdException')
 
@@ -198,7 +199,8 @@ class Replica(object):
                 movie_exists = True
                 ratings.append(self.ratings[key])
         if movie_exists:
-            return {"timestamp": self.replica_timestamp.vector, "ratings" : ratings}
+            movie_name = self.movies[movie_id]
+            return {"timestamp": self.replica_timestamp.vector, "ratings" : ratings,"movie_id":movie_id,"movie_name":movie_name}
         else: # when the movie id isn't valid
             raise Exception("InvalidMovieIdException")
 
