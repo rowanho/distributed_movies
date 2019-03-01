@@ -186,7 +186,7 @@ class Replica(object):
             movie_name = self.movies[movie_id]
             return {"timestamp" : self.replica_timestamp.vector, "rating": self.ratings[user_id,movie_id],"movie_id":movie_id,"movie_name":movie_name}
         else:
-            raise Exception('InvalidRatingIdException')
+            raise Exception("InvalidRatingIdException")
 
 
     #returns the rating of a movie by all users
