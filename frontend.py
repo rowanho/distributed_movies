@@ -5,6 +5,7 @@ from uuid import uuid1
 from contextlib import contextmanager
 from common_functions.vector_clock import vector_clock
 import random
+import time
 
 #custom context manager for opening replica pyro connection and handling status automatically
 @contextmanager
@@ -34,7 +35,7 @@ class FrontEnd(object):
                     operation_id = str(uuid1())
                     try:
                         timestamp = self.prev_timestamp.vector
-                        res = replica.add_rating(operation_id,timestamp,user_id,movie_id,rating)
+                        res = replica.add_rating(operation_id,timestamp,time.time(),user_id,movie_id,rating)
                         self.prev_timestamp.updateToMax(res["timestamp"])
                         done = True
                         return "Successfully added rating!"

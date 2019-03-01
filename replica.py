@@ -60,16 +60,21 @@ class Replica(object):
         self.number_of_servers = number_of_servers
         self.movies = get_all_movies()
         self.ratings = get_all_ratings()
-        #this timestamp is inced whenever we handle an update request
+        #needed to handle concurrent updates
+        self.date_times = {}
+        #start by initialising all to 0
+        for key in self.ratings:
+            self.date_times[key] = 0
+        #this timestamp is incremented whenever we handle an update request
         self.replica_timestamp = vector_clock(server_ids,id)
-        #this timestamp is inced whenever we actually add a stable update to the data
+        #this timestamp is incremented whenever we actually add a stable update to the data
         self.value_timestamp = vector_clock(server_ids,id)
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
         self.crash_probability = 0.2
         self.restore_probability = 0.5
-        self.gossip_interval = 1.0
+        self.gossip_interval = 10.0
         self.crash_interval = 1.0
         thread = threading.Thread(target=self.run_gossip, args=()) # separate thread for gossip
         thread.daemon = True
@@ -140,11 +145,11 @@ class Replica(object):
     def apply_updates(self):
         #stabilises updates where it is possible to do so
         for operation_id,u in self.update_log.items():
-            if not u["stable"] and self.replica_timestamp.is_geq(u["timestamp"]):
+            if not u["stable"] and self.replica_timestamp.is_geq(u["vector_timestamp"]):
                 if u["type"] == "add_rating":
                     data = u["data"]
                     if operation_id not in self.executed_operations:
-                        self.apply_add_rating(u["timestamp"],data["user_id"],data["movie_id"],data["rating"])
+                        self.apply_add_rating(u["vector_timestamp"],u["date_time"],data["user_id"],data["movie_id"],data["rating"])
                         self.executed_operations.append(operation_id)
                 u["stable"] = True
         #checks the timestamp table to see if we can remove some updates, this is useful
@@ -157,11 +162,16 @@ class Replica(object):
 
     #handles the front end update request to add a rating
     #for now we don't concern ourselves with the users table and checking whether the movie exists
-    def add_rating(self,operation_id,prev_timestamp,user_id,movie_id,rating):
+    def add_rating(self,operation_id,prev_timestamp,date_time,user_id,movie_id,rating):
         if not self.online:
             raise Exception("ServerCrashedException")
         if movie_id in self.movies:
-            update =  {"timestamp":self.replica_timestamp.vector,"stable":False,"type":"add_rating","data":{"user_id":user_id,"movie_id":movie_id,"rating":rating}}
+            update =  {"vector_timestamp":self.replica_timestamp.vector,
+            "date_time":date_time,
+            "stable":False,"type":"add_rating",
+            "data":{"user_id":user_id,
+            "movie_id":movie_id,
+            "rating":rating}}
             self.update_log[operation_id] = update
             self.replica_timestamp.increment()
             return {"timestamp":self.replica_timestamp.vector}
@@ -170,10 +180,16 @@ class Replica(object):
 
 
     #applys the update to add a new rating or updates an existing rating
-    def apply_add_rating(self, timestamp,user_id,movie_id,rating):
-        if movie_id in self.movies:
+    def apply_add_rating(self, vector_timestamp,date_time,user_id,movie_id,rating):
+        #concurrency check - if we already have a later update for the same ids,
+        #then we shouldn't apply the older update
+        if (user_id,movie_id) in self.ratings:
+            if self.date_times[user_id,movie_id] < date_time:
+                self.ratings[user_id,movie_id] = rating
+                self.value_timestamp.updateToMax(vector_timestamp)
+        else:
             self.ratings[user_id,movie_id] = rating
-            self.value_timestamp.updateToMax(timestamp)
+            self.value_timestamp.updateToMax(vector_timestamp)
 
     #gets the rating of a movie by user_id and movie_id
     def get_user_rating(self,prev_timestamp,user_id,movie_id):

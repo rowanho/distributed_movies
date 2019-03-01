@@ -8,13 +8,13 @@ def get_user_movie_ids():
     valid_movie = False
     while not valid_movie:
         input_movie = input("\nEnter movie id: ")
-        input_user = input("\nEnter user id: ")
         try:
             movie_id = int(input_movie)
             valid_movie = True
         except:
             print("Please enter a valid integer for movie id (a positive integer)")
     while not valid_user:
+        input_user = input("\nEnter user id: ")
         try:
             user_id = int(input_user)
             if user_id > 0:
