@@ -67,12 +67,16 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-        self.crash_probability = 0.7
+        self.crash_probability = 0.2
         self.restore_probability = 0.5
-        self.interval = 5.0
-        thread = threading.Thread(target=self.run, args=()) # separate thread for gossip
+        self.gossip_interval = 1.0
+        self.crash_interval = 1.0
+        thread = threading.Thread(target=self.run_gossip, args=()) # separate thread for gossip
         thread.daemon = True
         thread.start()
+        thread2 = threading.Thread(target=self.simulate_crash, args=()) # separate thread for simulating crash
+        thread2.daemon = True
+        thread2.start()
 
 
     #gets the status of the server
@@ -111,24 +115,25 @@ class Replica(object):
 
 
     #gossips and checks for updates to make stable at fixed intervals
-    def run(self):
+    def run_gossip(self):
         while True:
             if self.online:
                 self.gossip()
                 self.apply_updates()
-            self.simulate_crash()
-            time.sleep(self.interval)
+            time.sleep(self.gossip_interval)
 
     #simulates the chance of a server going down
     #every interval there is the probability that the server crashes
     #if server is offline, it has a probability of coming back
     def simulate_crash(self):
-        if self.online:
-            if random.random() < self.crash_probability:
-                self.online = False
-        else:
-            if random.random() < self.restore_probability:
-                self.online = True
+        while True:
+            if self.online:
+                if random.random() < self.crash_probability:
+                    self.online = False
+            else:
+                if random.random() < self.restore_probability:
+                    self.online = True
+            time.sleep(self.crash_interval)
 
 
     #checks the update log for updates that can be made stable
@@ -219,8 +224,7 @@ def main():
     r = Replica(server_ids,id_string,number_of_servers)
     uri = daemon.register(r)   # register the object not the class
     ns.register(id_string + ".replica", uri)   # register the object with a name in the name server
-    print("Server with id %s is ready." %(id_string))
-
+    print("Replica with id %s ready: " % (id_string))
 
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 

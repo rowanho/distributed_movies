@@ -91,7 +91,6 @@ class FrontEnd(object):
                             #try again and get another server
                             continue
                         elif str(e) == "NotUpToDateException": # exception raised because server not up to date
-                            print("not up to date exception")
                             continue
 
 
@@ -107,7 +106,6 @@ def get_free_server():
                 is_free = False
                 try:
                     if replica.get_status() == 'active' and replica.is_online():
-                        #print("Front end found available server: " + key)
                         is_free = True
                 except:
                     continue
@@ -121,7 +119,7 @@ def main():
     ns = Pyro4.locateNS()
     uri = daemon.register(FrontEnd)
     ns.register("frontend", uri)
-    print("Ready.")
+    print("Front end server ready: ")
     daemon.requestLoop()
 if __name__ == "__main__":
     main()
