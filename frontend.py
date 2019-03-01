@@ -3,8 +3,7 @@ import Pyro4
 import threading
 from uuid import uuid1
 from contextlib import contextmanager
-from lib.vector_clock import vector_clock
-from lib.custom_exceptions import *
+from common_functions.vector_clock import vector_clock
 import random
 
 #custom context manager for opening replica pyro connection and handling status automatically

@@ -2,36 +2,21 @@ Requirements:
 python 3.7
 pyro4
 
-Running the program automatically on linux:
+Running the program on linux:
 
-Assign the script start_script.sh permissions to execute and run the script:
+    chmod +x start_script.sh
+    source start_script.sh
 
-    ./start_script.sh n
-
-Where n is the number of replica managers to use (an integer >= 3)
-
-Running the program manually:
-
-Start the pyro name service:
-
-    pyro4-ns &
-
-Run 3 (or more) instances of replica.py
-
-    python3 replica.py n &
-
-Where n is the number of replica managers to use (an integer >= 3), and
-running replica.py n times.
-
-Run the front end server:
-
-    python3 frontend.py &
+This starts the pyro name service, 3 instances of replica.py, and frontend.py.
 
 
-Run the client:
+Run the client with:
 
-    python3 client.py &
+    python3 client.py
 
+To kill the processes after they are finished running, use the command:
+
+    kill $(jobs -p)
 
 Interacting with the client:
 
@@ -41,8 +26,12 @@ get all ratings for a movie id, or get a specific rating by user id & movie id.
 System information and guarantees:
 - The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/
 
-- Replicas have a 10% chance of going down (reporting as "offline") every 1 second, and a 50% chance of coming back online if
-offline every second. Whenever a client uses a replica, the replica reports itself as "overloaded" for that period. 
+- Replicas gossip at a fixed interval(1 second), each replica gossips to up to 2 available servers.
+
+- The front end server attempts to find a server which is reporting as "available" (ie neither "offline" or "overloaded")
+
+- Replicas that are online have a 20% chance of going down (reporting as "offline") every 1 second, and a 50% chance of coming back online (if
+offline) every second. Whenever the front end server needs to use a replica, the replica reports itself as "overloaded" for that period.
 
 - The server/client handles invalid input formats and movies/ratings that do not exist.
 

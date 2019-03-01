@@ -4,11 +4,10 @@ import threading
 import time
 import random
 import sys
-from lib.csv_functions import get_all_movies,get_all_ratings
+from common_functions.csv_functions import get_all_movies,get_all_ratings
 #simple vector clock object
-from lib.vector_clock import vector_clock
+from common_functions.vector_clock import vector_clock
 
-from lib.custom_exceptions import *
 #self.status is either set to 'active', 'over-loaded' or 'offline'
 #this can happen when our timestamp is geq the timestamp of the update
 #we can then check the timestamps to see if we have recent enough data to respond properly

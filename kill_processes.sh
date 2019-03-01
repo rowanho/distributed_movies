@@ -1,3 +1,2 @@
 #!/bin/bash
-killall -SIGKILL python
-killall -SIGKILL pyro4-ns
+kill $(jobs -p)
