@@ -72,9 +72,9 @@ class Replica(object):
         self.update_log = {}
         self.executed_operations = []
         self.timestamp_table = {}
-        self.crash_probability = 0.2
+        self.crash_probability = 0.3
         self.restore_probability = 0.5
-        self.gossip_interval = 10.0
+        self.gossip_interval = 1.0
         self.crash_interval = 1.0
         thread = threading.Thread(target=self.run_gossip, args=()) # separate thread for gossip
         thread.daemon = True
@@ -187,9 +187,11 @@ class Replica(object):
         #then we shouldn't apply the older update
         if (user_id,movie_id) in self.ratings:
             if self.date_times[user_id,movie_id] < date_time:
+                self.date_times[user_id,movie_id] = date_time
                 self.ratings[user_id,movie_id] = rating
                 self.value_timestamp.updateToMax(vector_timestamp)
         else:
+            self.date_times[user_id,movie_id] = date_time
             self.ratings[user_id,movie_id] = rating
             self.value_timestamp.updateToMax(vector_timestamp)
 
