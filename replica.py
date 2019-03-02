@@ -50,7 +50,7 @@ def can_remove_update(update,timestamp_table):
     return True
 
 
-####remote functions to get the status of the server####
+####remote replica object####
 @Pyro4.expose
 class Replica(object):
     def __init__(self,server_ids,id,number_of_servers):
@@ -152,7 +152,9 @@ class Replica(object):
                         self.apply_add_rating(u["vector_timestamp"],u["date_time"],data["user_id"],data["movie_id"],data["rating"])
                         self.executed_operations.append(operation_id)
                 u["stable"] = True
-        #checks the timestamp table to see if we can remove some updates, this is useful
+
+        #checks the timestamp table to see if we can remove some updates
+        # However, we need to know the number of servers to do this
         if len(self.timestamp_table) == self.number_of_servers:
             for id,u in self.update_log.items():
                 #check if we can remove it
@@ -231,7 +233,7 @@ def main():
     try:
         number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
     except:
-        number_of_servers = 3   # default to 3 servers
+        number_of_servers = 100000   # default to 'infinite' servers - ie we never remove updates as whena all servers are reached
     id_string = str(uuid4())
     server_ids = get_all_replicas(id_string)  # get the ids of all the other remote servers
     server_ids.append(id_string)
