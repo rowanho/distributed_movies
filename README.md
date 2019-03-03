@@ -4,7 +4,8 @@ pyro4
 
 Running the program on linux:
 
-    chmod +x start_script.sh
+In the base directory of the project, run start_script.sh:
+
     source start_script.sh
 
 This starts the pyro name service, 3 instances of replica.py, and frontend.py.
@@ -20,8 +21,9 @@ To kill the processes after they are finished running, use the command:
 
 Interacting with the client:
 
-Follow the prompts to query and update ratings. A user can add a movie rating,
-get all ratings for a movie id, or get a specific rating by user id & movie id.
+Follow the prompts to query and update ratings.
+
+A user can add a movie rating, get all ratings for a movie id, or get a specific rating by user id & movie id.
 
 The client program prints out the results of the query, as well as giving
 the name of the movie corresponding to the given id, or an error message.
