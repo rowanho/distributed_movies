@@ -28,14 +28,14 @@ the name of the movie corresponding to the given id, or an error message.
 
 
 System information:
-- The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/. They use
-an in memory model, so restarting the programs will reset the data.
+- The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/.
+In memory model, so restarting the programs will reset the data.
 
-- Replicas gossip at a fixed interval(1 second), each replica gossips to up to 2 available servers.
+- The front end can only use replicas reporting as "available" (neither "offline" or "overloaded").
 
-- The front end can only use replicas reporting as "available" (neither "offline" or "overloaded")
+- Replicas gossip at a fixed interval(1 second), sending data to up to 2 other replicas if "available".
 
-- Every second, Replicas have a 30% chance of becoming "offline", and a 50% chance of coming back "online" (if "offline"). If a replica becomes "offline" whilst the front end is calling a remote method on it, the front end attempts to use another replica.
+- Every second, Replicas have a 30% chance of becoming "offline", and a 50% chance of coming back "online" (if "offline").
 
 - "Offline" replicas neither send or recieve gossip.
 
@@ -43,10 +43,10 @@ an in memory model, so restarting the programs will reset the data.
 
 - "Overloaded" replicas can send (but not recieve) gossip.
 
-- The client/server handle invalid queries where a movie id or a rating (movie id + user id) is not in the dataset.
+- Client/server handle invalid queries where a movie id or a rating (movie + user id) is not in the dataset.
 
 - Consistent service - client's queries respect at least the updates they have made,
- by keeping a vector timestamp "prev" for each client. Therefore updated ratings can be queried by movie/user id
- and the new rating should be present in the data returned by the server.
+ by keeping a vector timestamp "prev" per client. Therefore updated rating/s can be queried by movie/user id
+ and the rating/s should be present in the data returned.
 
  - Global ordering of updates - Ensured by sending and storing the date/time of when each update was sent.
