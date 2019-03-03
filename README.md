@@ -45,6 +45,8 @@ an in memory model, so restarting the programs will reset the data.
 
 - The client/server handle invalid queries where a movie id or a rating (movie id + user id) is not in the dataset.
 
-- Consistency ensured so that a client's queries respect at least the updates they have made,
- by keeping a timestamp "prev" for each client. Therefore updated ratings can be queried by movie/user id
+- Consistent service - client's queries respect at least the updates they have made,
+ by keeping a vector timestamp "prev" for each client. Therefore updated ratings can be queried by movie/user id
  and the new rating should be present in the data returned by the server.
+
+ - Global ordering of updates - Ensured by sending and storing the date/time of when each update was sent.
