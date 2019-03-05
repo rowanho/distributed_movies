@@ -72,7 +72,7 @@ def make_ratings_dict():
 
 #takes in array of ratings and returns a string that shows a nicer representation
 def display_ratings_list(movie_name,ratings_list):
-    output = "\nRatings for movie ''%s'\n" % (movie_name)
+    output = "\nRatings for movie '%s'\n" % (movie_name)
     output += "\nTotal ratings: " + str(len(ratings_list)) + "\n"
     ratings_dict = make_ratings_dict()
     for r in ratings_list:
