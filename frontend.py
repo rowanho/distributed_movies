@@ -63,7 +63,7 @@ class FrontEnd(object):
                     except Exception as e:
                         if str(e) == "InvalidRatingIdException":
                             done = True
-                            raise Exception("InvalidRatingIdException
+                            raise Exception("InvalidRatingIdException")
                         else:#try again and get another server
                             continue
 

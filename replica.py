@@ -235,7 +235,7 @@ def main():
     try:
         number_of_servers = int(sys.argv[1]) # we need to know this to know if an update has reached all servers
     except:
-        number_of_servers = 100000   # default to 'infinite' servers - ie we never remove updates as whena all servers are reached
+        number_of_servers = 100000   # default to 'infinite' servers - ie we never remove updates as we don't know when all servers are reached
     id_string = str(uuid4())
     server_ids = get_all_replicas(id_string)  # get the ids of all the other remote servers
     server_ids.append(id_string)
