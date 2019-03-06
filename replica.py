@@ -116,15 +116,18 @@ class Replica(object):
     #creates a new gossip message and sends it
     #gossip mesage contains replica timestamp and our update log
     def gossip(self):
+        #ensure we copy data, otherwise dict size may change during serialisation
         send_gossip(2,{"id":self.id,"timestamp":self.replica_timestamp.vector,"updates":self.update_log})
 
 
     #gossips and checks for updates to make stable at fixed intervals
     def run_gossip(self):
         while True:
-            if self.online:
-                self.gossip()
-                self.apply_updates()
+            lock = threading.Lock()
+            with lock:
+                if self.online:
+                    self.gossip()
+                    self.apply_updates()
             time.sleep(self.gossip_interval)
 
     #simulates the chance of a server going down
