@@ -21,23 +21,23 @@ To kill the processes after they are finished running, use the command:
 
 Interacting with the client:
 
-Follow the prompts to query and update ratings.
+- Follow the prompts to query and update ratings.
 
-A user can add a movie rating, get all ratings for a movie id, or get a specific rating by user id & movie id.
+- A user can add a movie rating, get all ratings for a movie id, or get a specific rating by user id & movie id.
 
-The client program prints out the results of the query, as well as giving
-the name of the movie corresponding to the given id, or an error message.
+- The client program prints out a display of the results of a query, as well as giving
+the name of the movie corresponding to the given id, or an error message if input is invalid.
 
 
 System information:
-- The replicas load the "small" dataset from https://grouplens.org/datasets/movielens/latest/.
-In memory model, so restarting the programs will reset the data.
+- The replicas load the "small" movielens data set. An in memory model is used,
+so restarting the python programs will reset back to the unmodified dataset.
 
 - The front end can only use replicas reporting as "available" (neither "offline" or "overloaded").
 
 - Replicas gossip at a fixed interval(1 second), sending data to up to 2 other replicas if "available".
 
-- Every second, Replicas have a 30% chance of becoming "offline", and a 50% chance of coming back "online" (if "offline").
+- Every second, Replicas have a 30% chance of simulating becoming "offline", and a 50% chance of coming back "online" (if "offline").
 
 - "Offline" replicas neither send or recieve gossip.
 
@@ -47,8 +47,7 @@ In memory model, so restarting the programs will reset the data.
 
 - Client/server handle invalid queries where a movie id or a rating (movie + user id) is not in the dataset.
 
-- Consistent service - client's queries respect at least the updates they have made,
- by keeping a vector timestamp "prev" per client. Therefore updated rating/s can be queried by movie/user id
+- Consistent service - client's queries respect at least the updates they have made. Therefore updated rating/s can be queried by movie/user id
  and the rating/s should be present in the data returned.
 
  - Global ordering of updates - Ensured by sending and storing the date/time of when each update was sent.
