@@ -45,9 +45,7 @@ class FrontEnd(object):
                         if str(e) == "InvalidMovieIdException":
                             done = True
                             return "Movie not in the database"
-                        #Raised if server crashes during our interactions
-                        elif str(e) == "ServerCrashedException":
-                            #try again and get another server
+                        else:#try again and get another server
                             continue
 
 
@@ -65,11 +63,8 @@ class FrontEnd(object):
                     except Exception as e:
                         if str(e) == "InvalidRatingIdException":
                             done = True
-                            raise Exception("InvalidRatingIdException")
-                        elif str(e) == "ServerCrashedException":
-                            #try again and get another server
-                            continue
-                        elif str(e) == "NotUpToDateException": # exception raised because server not up to date
+                            raise Exception("InvalidRatingIdException
+                        else:#try again and get another server
                             continue
 
 
@@ -89,14 +84,11 @@ class FrontEnd(object):
                         if str(e) == "InvalidMovieIdException":
                             done = True
                             raise Exception("InvalidMovieIdException")
-                        elif str(e) == "ServerCrashedException":
-                            #try again and get another server
-                            continue
-                        elif str(e) == "NotUpToDateException": # exception raised because server not up to date
+                        else:#try again and get another server
                             continue
 
 
-#iterates through servers on the name system and returns the first one that is free
+#iterates through servers on the name system and returns a random one that is free
 #if it can't find one, returns -1
 def get_free_server():
     ns = Pyro4.locateNS()
