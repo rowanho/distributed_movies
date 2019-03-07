@@ -2,14 +2,14 @@ Requirements:
 python 3.7
 pyro4
 
-Running the program on linux:
+Running the program on linux (or git bash terminal on windows):
 
 In the base directory of the project, run start_script.sh:
 
     source start_script.sh
 
 This starts the pyro name service, 3 instances of replica.py, and frontend.py.
-
+Each server should print out a message when they are up and running.
 
 Run the client with:
 
@@ -25,13 +25,11 @@ Interacting with the client:
 
 - A user can add a movie rating, get all ratings for a movie id, or get a specific rating by user id & movie id.
 
-- The client program prints out a display of the results of a query, as well as giving
-the name of the movie corresponding to the given id, or an error message if input is invalid.
+- The client program prints out a display of the results of a query, or an error message if input is invalid.
 
 
 System information:
-- The replicas load the "small" movielens data set. An in memory model is used,
-so restarting the python programs will reset back to the unmodified dataset.
+-
 
 - The front end can only use replicas reporting as "available" (neither "offline" or "overloaded").
 
@@ -39,15 +37,10 @@ so restarting the python programs will reset back to the unmodified dataset.
 
 - Every second, Replicas have a 30% chance of simulating becoming "offline", and a 50% chance of coming back "online" (if "offline").
 
-- "Offline" replicas neither send or recieve gossip.
+- "Offline" replicas neither send or recieve gossip. "Overloaded" replicas send gossip but can't recieve any.
 
 - Whenever the front end server uses a replica, the replica reports itself as "overloaded" for that period.
 
-- "Overloaded" replicas can send (but not recieve) gossip.
-
-- Client/server handle invalid queries where a movie id or a rating (movie + user id) is not in the dataset.
-
-- Consistent service - client's queries respect at least the updates they have made. Therefore updated rating/s can be queried by movie/user id
- and the rating/s should be present in the data returned.
+- Consistent service - client's queries respect at least the updates they have made. Ensured by keeping a timestamp "prev" per client.
 
  - Global ordering of updates - Ensured by sending and storing the date/time of when each update was sent.
