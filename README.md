@@ -1,9 +1,9 @@
-Requirements:
-python 3.7
-pyro4
+## Running the program on linux:
 
-Running the program on linux (or git bash terminal on windows):
+Create a python >=3.7 environment and install requirements:
 
+    pip install -r requirements.txt
+    
 In the base directory of the project, run start_script.sh:
 
     source start_script.sh
