@@ -2,9 +2,9 @@ import csv
 
 MOVIE_DIR = 'ml-latest-small'
 
-#####functions that read/write to csv#####
+##### functions that read/write to csv #####
 
-#returns all movies in a dict of form {movie_id:movie_name,...}
+# returns all movies in a dict of form {movie_id:movie_name,...}
 def get_all_movies():
     movie_dict = {}
     with open(MOVIE_DIR +'/movies.csv') as movie_csv:
@@ -15,7 +15,7 @@ def get_all_movies():
             movie_dict[int(row[0])] = row[1]
     return movie_dict
 
-#returns all ratings in a dict of the form {user_id,movie_id:rating, }
+# returns all ratings in a dict of the form {user_id,movie_id:rating, }
 def get_all_ratings():
     ratings = {}
     with open(MOVIE_DIR + '/ratings.csv') as rating_csv:
