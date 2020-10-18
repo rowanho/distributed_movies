@@ -1,9 +1,9 @@
-#class that implements a clock that maintains a vector timestamp
+# Class that implements a clock that maintains a vector timestamp
 
 class vector_clock:
-    #sets the vector clock to 0 for the list of ids given
-    #id_list - a list of the uuids of the replicas
-    #specific_id - optional, the replicas need to use this when incrementing their own part of the vector
+    # Sets the vector clock to 0 for the list of ids given
+    # id_list - a list of the uuids of the replicas
+    # specific_id - optional, the replicas need to use this when incrementing their own part of the vector
     def __init__(self,id_list,specific_id=''):
         self.vector = {}
         self.specific_id = specific_id
@@ -11,7 +11,7 @@ class vector_clock:
             self.vector[id] = 0
 
 
-    #given a second clock, brings us up to date
+    # Given a second clock, brings us up to date
     def updateToMax(self,v2):
         for id, val in v2.items():
             if id not in self.vector or val > self.vector[id]:
@@ -22,7 +22,7 @@ class vector_clock:
         self.vector[self.specific_id] += 1
 
 
-    #returns True iff our time stamp is greater than or equal to given timestammp vector
+    # Returns True iff our time stamp is greater than or equal to given timestammp vector
     def is_geq(self,v2):
         for id,val in v2.items():
             if id not in self.vector:
@@ -32,12 +32,12 @@ class vector_clock:
         return True
 
 
-    #returns True or False given another vector clock
+    # Returns True or False given another vector clock
     def is_concurrent(self,v2):
         found_less_than = False
         found_more_than = False
         for id,val in v2.items():
-            #there may be ids we haven't seen before, set these to 0
+            # There may be ids we haven't seen before, set these to 0
             if id not in self.vector:
                 self.vector[id] = 0
             if val < self.vector[id]:

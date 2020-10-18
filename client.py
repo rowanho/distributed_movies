@@ -1,4 +1,3 @@
-# saved as greeting-client.py
 import Pyro4
 
 
@@ -24,7 +23,7 @@ def get_user_movie_ids():
     return movie_id,user_id
 
 
-#returns a float divisble by 0.5 - the rating of a movie
+# Returns a float divisble by 0.5 - the rating of a movie
 def add_movie_rating(frontend):
     valid_rating = False
     movie_id, user_id = get_user_movie_ids()
@@ -42,7 +41,7 @@ def add_movie_rating(frontend):
     print("Adding rating..")
     return frontend.add_rating(user_id,movie_id,movie_rating)
 
-#returns the name of a movie and an array of all ratings for a movie
+# Returns the name of a movie and an array of all ratings for a movie
 def get_all_ratings(frontend):
     valid = False
     while not valid:
@@ -58,11 +57,10 @@ def get_all_ratings(frontend):
 def get_user_rating(frontend):
     movie_id, user_id = get_user_movie_ids()
     print("Getting rating..")
-    # actually call the remote functions here
+    # Call the remote functions here
     return (user_id,) + frontend.get_user_rating(user_id,movie_id)
 
 
-#ratings
 def make_ratings_dict():
     d = {}
     for i in range(11):
@@ -70,7 +68,7 @@ def make_ratings_dict():
     return d
 
 
-#takes in array of ratings and returns a string that shows a nicer representation
+# Takes in array of ratings and returns a string that shows a nicer representation
 def display_ratings_list(movie_name,ratings_list):
     output = "\nRatings for movie '%s'\n" % (movie_name)
     output += "\nTotal ratings: " + str(len(ratings_list)) + "\n"

@@ -1,14 +1,12 @@
-# saved as greeting-server.py
 import Pyro4
 import threading
 from uuid import uuid1
 from contextlib import contextmanager
-#simple vector clock object
 from common_functions.vector_clock import vector_clock
 import random
 import time
 
-#custom context manager for opening replica pyro connection and handling status automatically
+# Context manager for opening replica pyro connection and handling status automatically
 @contextmanager
 def openReplica(key):
     replica = Pyro4.Proxy("PYRONAME:" + key)
@@ -23,7 +21,7 @@ def openReplica(key):
 @Pyro4.expose
 class FrontEnd(object):
     def __init__(self):
-        #prev keeps track of the timestamp of the most recent data the client has accessed
+        # Prev keeps track of the timestamp of the most recent data the client has accessed
         self.prev_timestamp = vector_clock([])
 
 
@@ -41,11 +39,11 @@ class FrontEnd(object):
                         done = True
                         return "Successfully added rating!"
                     except Exception as e:
-                        #Raised if movie id not valid
+                        # Raised if movie id not valid
                         if str(e) == "InvalidMovieIdException":
                             done = True
                             return "Movie not in the database"
-                        else:#try again and get another server
+                        else: # Try again and get another server
                             continue
 
 
@@ -64,7 +62,7 @@ class FrontEnd(object):
                         if str(e) == "InvalidRatingIdException":
                             done = True
                             raise Exception("InvalidRatingIdException")
-                        else:#try again and get another server
+                        else: # Try again and get another server
                             continue
 
 
@@ -84,12 +82,12 @@ class FrontEnd(object):
                         if str(e) == "InvalidMovieIdException":
                             done = True
                             raise Exception("InvalidMovieIdException")
-                        else:#try again and get another server
+                        else: # Try again and get another server
                             continue
 
 
-#iterates through servers on the name system and returns a random one that is free
-#if it can't find one, returns -1
+# Iterates through servers on the name system and returns a random one that is free
+# if it can't find one, returns -1
 def get_free_server():
     ns = Pyro4.locateNS()
     keys = list(ns.list().keys())
@@ -107,7 +105,7 @@ def get_free_server():
                     return key
     return -1 # if no free server found
 
-#register on pyro here
+# Register on pyro here
 def main():
     daemon = Pyro4.Daemon()
     ns = Pyro4.locateNS()
